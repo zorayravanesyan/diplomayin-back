@@ -18,6 +18,7 @@ const createTeacherSchema = Joi.object({
   first_name: Joi.string().min(1).max(100).required(),
   last_name: Joi.string().min(1).max(100).required(),
   gender: Joi.string().valid('MALE', 'FEMALE', 'UNKNOWN').optional(),
+  student_ids: Joi.array().items(Joi.number().integer().positive()).min(1).required(),
 });
 
 const loginSchema = Joi.object({

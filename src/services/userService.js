@@ -243,8 +243,10 @@ async function updateUserByAdmin(targetIdRaw, body, requester) {
 
 async function createTeacher(userData) {
   return sequelize.transaction(async (t) => {
+    const { student_ids, ...userCreateData } = userData;
+
     const existingEmail = await User.findOne({
-      where: { email: userData.email },
+      where: { email: userCreateData.email },
       transaction: t,
     });
     if (existingEmail) {
@@ -252,18 +254,44 @@ async function createTeacher(userData) {
     }
 
     const existingUsername = await User.findOne({
-      where: { username: userData.username },
+      where: { username: userCreateData.username },
       transaction: t,
     });
     if (existingUsername) {
       throw new ConflictError('Username already taken');
     }
 
+    const uniqueStudentIds = [...new Set(student_ids || [])];
+    const studentRows = await User.findAll({
+      attributes: ['id'],
+      where: { id: uniqueStudentIds, role: 'STUDENT' },
+      transaction: t,
+    });
+    if (studentRows.length !== uniqueStudentIds.length) {
+      const found = new Set(studentRows.map((x) => x.id));
+      const missingStudentIds = uniqueStudentIds.filter((id) => !found.has(id));
+      throw new ValidationError('Անվավեր student_ids', [
+        {
+          field: 'student_ids',
+          message: 'Որոշ աշակերտներ գոյություն չունեն',
+          missingStudentIds,
+        },
+      ]);
+    }
+
     const user = await User.create(
       {
-        ...userData,
+        ...userCreateData,
         role: 'TICHER',
       },
+      { transaction: t }
+    );
+
+    await StudentTeacher.bulkCreate(
+      uniqueStudentIds.map((student_id) => ({
+        student_id,
+        teacher_id: user.id,
+      })),
       { transaction: t }
     );
 
