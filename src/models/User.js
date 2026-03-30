@@ -1,6 +1,6 @@
-import { DataTypes } from 'sequelize';
-import { sequelize } from '../config/database.js';
-import bcrypt from 'bcryptjs';
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/database.js');
+const bcrypt = require('bcryptjs');
 
 const User = sequelize.define(
   'User',
@@ -39,18 +39,15 @@ const User = sequelize.define(
       allowNull: false,
       unique: true,
     },
-    weight_kg: {
-      type: DataTypes.DECIMAL(5, 2),
-      allowNull: true,
-    },
-    height_sm: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-    },
     gender: {
       type: DataTypes.ENUM('MALE', 'FEMALE', 'UNKNOWN'),
       allowNull: false,
       defaultValue: 'UNKNOWN',
+    },
+    role: {
+      type: DataTypes.ENUM('STUDENT', 'TICHER', 'ADMIN'),
+      allowNull: false,
+      defaultValue: 'STUDENT',
     },
   },
   {
@@ -83,4 +80,4 @@ User.prototype.toJSON = function () {
   return values;
 };
 
-export default User;
+module.exports = User;

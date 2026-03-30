@@ -1,6 +1,6 @@
-import { AppError } from '../utils/errors.js';
+const { AppError } = require('../utils/errors.js');
 
-export function errorHandler(err, req, res, next) {
+function errorHandler(err, req, res, next) {
   if (err instanceof AppError) {
     const statusCode = getStatusCode(err.code);
     return res.status(statusCode).json({
@@ -49,3 +49,5 @@ function getStatusCode(code) {
   };
   return statusMap[code] || 500;
 }
+
+module.exports = { errorHandler };

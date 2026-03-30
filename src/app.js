@@ -1,14 +1,16 @@
-import express from 'express';
-import cors from 'cors';
-import authRoutes from './routes/auth.js';
-import { errorHandler } from './middleware/errorHandler.js';
+const express = require('express');
+const cors = require('cors');
+const authRoutes = require('./routes/auth.js');
+const { errorHandler } = require('./middleware/errorHandler.js');
 
 const app = express();
 
 // Middleware
-app.use(cors({
-  origin: '*',
-}));
+app.use(
+  cors({
+    origin: '*',
+  })
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -23,4 +25,4 @@ app.get('/health', (req, res) => {
 // Error handling
 app.use(errorHandler);
 
-export default app;
+module.exports = app;

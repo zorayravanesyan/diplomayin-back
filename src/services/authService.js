@@ -1,11 +1,11 @@
-import jwt from 'jsonwebtoken';
-import { Op } from 'sequelize';
-import { User } from '../models/index.js';
-import { JWT_CONFIG } from '../config/jwt.js';
-import { UnauthorizedError, NotFoundError, ConflictError } from '../utils/errors.js';
-import { sequelize } from '../config/database.js';
+const jwt = require('jsonwebtoken');
+const { Op } = require('sequelize');
+const { User } = require('../models/index.js');
+const { JWT_CONFIG } = require('../config/jwt.js');
+const { UnauthorizedError, NotFoundError, ConflictError } = require('../utils/errors.js');
+const { sequelize } = require('../config/database.js');
 
-export async function registerUser(userData) {
+async function registerUser(userData) {
   return sequelize.transaction(async (t) => {
     // Check if email exists
     const existingEmail = await User.findOne({
@@ -41,7 +41,7 @@ export async function registerUser(userData) {
   });
 }
 
-export async function loginUser(login_data, password) {
+async function loginUser(login_data, password) {
   const user = await User.findOne({
     where: {
       [Op.or]: [
@@ -72,7 +72,7 @@ export async function loginUser(login_data, password) {
   };
 }
 
-export async function refreshAccessToken(refreshToken) {
+async function refreshAccessToken(refreshToken) {
   try {
     const decoded = jwt.verify(refreshToken, JWT_CONFIG.refreshTokenSecret);
     const user = await User.findByPk(decoded.userId);
@@ -91,7 +91,7 @@ export async function refreshAccessToken(refreshToken) {
   }
 }
 
-export async function getUserProfile(userId) {
+async function getUserProfile(userId) {
   const user = await User.findByPk(userId);
   if (!user) {
     throw new NotFoundError('User not found');
@@ -99,7 +99,7 @@ export async function getUserProfile(userId) {
   return user.toJSON();
 }
 
-export async function updateUserProfile(userId, updateData) {
+async function updateUserProfile(userId, updateData) {
   const user = await User.findByPk(userId);
   if (!user) {
     throw new NotFoundError('User not found');
@@ -127,3 +127,11 @@ function generateRefreshToken(userId) {
     expiresIn: JWT_CONFIG.refreshTokenExpiry,
   });
 }
+
+module.exports = {
+  registerUser,
+  loginUser,
+  refreshAccessToken,
+  getUserProfile,
+  updateUserProfile,
+};

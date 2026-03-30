@@ -1,6 +1,6 @@
-import * as authService from '../services/authService.js';
+const authService = require('../services/authService.js');
 
-export async function register(req, res, next) {
+async function register(req, res, next) {
   try {
     const result = await authService.registerUser(req.body);
     res.status(201).json(result);
@@ -9,7 +9,7 @@ export async function register(req, res, next) {
   }
 }
 
-export async function login(req, res, next) {
+async function login(req, res, next) {
   try {
     const { login_data, password } = req.body;
     console.log(login_data);
@@ -21,7 +21,7 @@ export async function login(req, res, next) {
   }
 }
 
-export async function refreshToken(req, res, next) {
+async function refreshToken(req, res, next) {
   try {
     const { refresh_token } = req.body;
     const result = await authService.refreshAccessToken(refresh_token);
@@ -31,7 +31,7 @@ export async function refreshToken(req, res, next) {
   }
 }
 
-export async function getProfile(req, res, next) {
+async function getProfile(req, res, next) {
   try {
     const user = await authService.getUserProfile(req.user.id);
     res.json({ user });
@@ -40,7 +40,7 @@ export async function getProfile(req, res, next) {
   }
 }
 
-export async function updateProfile(req, res, next) {
+async function updateProfile(req, res, next) {
   try {
     const user = await authService.updateUserProfile(req.user.id, req.body);
     res.json({ user });
@@ -48,3 +48,11 @@ export async function updateProfile(req, res, next) {
     next(error);
   }
 }
+
+module.exports = {
+  register,
+  login,
+  refreshToken,
+  getProfile,
+  updateProfile,
+};
