@@ -28,6 +28,13 @@ class UnauthorizedError extends AppError {
   }
 }
 
+class ForbiddenError extends AppError {
+  constructor(message = 'Forbidden') {
+    super('FORBIDDEN', message);
+    this.name = 'ForbiddenError';
+  }
+}
+
 class ConflictError extends AppError {
   constructor(message = 'Resource already exists') {
     super('CONFLICT', message);
@@ -40,5 +47,6 @@ module.exports = {
   ValidationError,
   NotFoundError,
   UnauthorizedError,
+  ForbiddenError,
   ConflictError,
 };

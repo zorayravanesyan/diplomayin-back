@@ -9,6 +9,9 @@ const registerSchema = Joi.object({
   gender: Joi.string().valid('MALE', 'FEMALE', 'UNKNOWN').optional(),
 });
 
+/** Ադմին POST /api/users/teachers — նույն դաշտերը, ինչ register */
+const createTeacherSchema = registerSchema;
+
 const loginSchema = Joi.object({
   login_data: Joi.string().required(),
   password: Joi.string().required(),
@@ -52,6 +55,7 @@ function validate(schema) {
 
 module.exports = {
   registerSchema,
+  createTeacherSchema,
   loginSchema,
   updateProfileSchema,
   refreshTokenSchema,
