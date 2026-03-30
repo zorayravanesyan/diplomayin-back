@@ -73,4 +73,13 @@ module.exports = {
       next(error);
     }
   },
+
+  async patchUserById(req, res, next) {
+    try {
+      const userPayload = await userService.updateUserByAdmin(req.params.id, req.body, req.user);
+      res.json({ user: userPayload });
+    } catch (error) {
+      next(error);
+    }
+  },
 };

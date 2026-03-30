@@ -37,6 +37,26 @@ const refreshTokenSchema = Joi.object({
   refresh_token: Joi.string().required(),
 });
 
+/** Ադմին PATCH /api/users/:id */
+const adminUpdateUserSchema = Joi.object({
+  first_name: Joi.string().min(1).max(100),
+  last_name: Joi.string().min(1).max(100),
+  email: Joi.string().email(),
+  username: Joi.string().alphanum().min(3).max(30),
+  gender: Joi.string().valid('MALE', 'FEMALE', 'UNKNOWN'),
+  password: Joi.string().min(6),
+  teacher_ids: Joi.array().items(Joi.number().integer().positive()),
+  settings: Joi.object({
+    weight_kg: Joi.number().positive().allow(null),
+    height_sm: Joi.number().integer().positive().allow(null),
+    experience_months: Joi.number().integer().min(0).allow(null),
+  }),
+})
+  .min(1)
+  .messages({
+    'object.min': 'Չի փոխվել ոչ մի դաշտ',
+  });
+
 function validate(schema) {
   return (req, res, next) => {
     const { error, value } = schema.validate(req.body, {
@@ -67,5 +87,6 @@ module.exports = {
   loginSchema,
   updateProfileSchema,
   refreshTokenSchema,
+  adminUpdateUserSchema,
   validate,
 };
