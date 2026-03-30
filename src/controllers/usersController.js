@@ -37,4 +37,40 @@ module.exports = {
       next(error);
     }
   },
+
+  async getAdminOverview(req, res, next) {
+    try {
+      const overview = await userService.getAdminOverview();
+      res.json(overview);
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async getAdminTeachersRoster(req, res, next) {
+    try {
+      const teachers = await userService.getAdminTeachersRoster();
+      res.json({ teachers });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async getAdminStudentsRoster(req, res, next) {
+    try {
+      const students = await userService.getAdminStudentsRoster();
+      res.json({ students });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async getUserById(req, res, next) {
+    try {
+      const userPayload = await userService.getUserWithRelationsById(req.params.id, req.user);
+      res.json({ user: userPayload });
+    } catch (error) {
+      next(error);
+    }
+  },
 };
