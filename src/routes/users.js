@@ -6,6 +6,13 @@ const { validate, createTeacherSchema } = require('../utils/validation.js');
 
 const router = express.Router();
 
+// Public: list teachers
+router.get('/teachers', usersController.getTeachers);
+
+// Authenticated: my relations
+router.get('/me/teachers', authenticateToken, usersController.getMyTeachers);
+router.get('/me/students', authenticateToken, usersController.getMyStudents);
+
 router.post(
   '/teachers',
   authenticateToken,

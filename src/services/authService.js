@@ -1,15 +1,17 @@
 const jwt = require('jsonwebtoken');
 const { Op } = require('sequelize');
-const { User } = require('../models/index.js');
+const { User, StudentTeacher } = require('../models/index.js');
 const { JWT_CONFIG } = require('../config/jwt.js');
-const { UnauthorizedError, NotFoundError, ConflictError } = require('../utils/errors.js');
+const { UnauthorizedError, NotFoundError, ConflictError, ValidationError } = require('../utils/errors.js');
 const { sequelize } = require('../config/database.js');
 
 async function registerUser(userData) {
   return sequelize.transaction(async (t) => {
+    const { teacher_ids, ...userCreateData } = userData;
+
     // Check if email exists
     const existingEmail = await User.findOne({
-      where: { email: userData.email },
+      where: { email: userCreateData.email },
       transaction: t,
     });
     if (existingEmail) {
@@ -18,15 +20,40 @@ async function registerUser(userData) {
 
     // Check if username exists
     const existingUsername = await User.findOne({
-      where: { username: userData.username },
+      where: { username: userCreateData.username },
       transaction: t,
     });
     if (existingUsername) {
       throw new ConflictError('Username already taken');
     }
 
+    // Validate teachers exist and are role=TICHER (single DB call)
+    const uniqueTeacherIds = Array.from(new Set(teacher_ids || []));
+    const teachers = await User.findAll({
+      attributes: ['id'],
+      where: { id: uniqueTeacherIds, role: 'TICHER' },
+      transaction: t,
+    });
+
+    if (teachers.length !== uniqueTeacherIds.length) {
+      const found = new Set(teachers.map((x) => x.id));
+      const missingTeacherIds = uniqueTeacherIds.filter((id) => !found.has(id));
+      throw new ValidationError('Invalid teacher_ids', [
+        { field: 'teacher_ids', message: 'Some teachers do not exist', missingTeacherIds },
+      ]);
+    }
+
     // Create user
-    const user = await User.create(userData, { transaction: t });
+    const user = await User.create(userCreateData, { transaction: t });
+
+    // Create relations (bulk insert)
+    await StudentTeacher.bulkCreate(
+      uniqueTeacherIds.map((teacherId) => ({
+        student_id: user.id,
+        teacher_id: teacherId,
+      })),
+      { transaction: t }
+    );
 
     // Generate tokens
     const tokens = generateTokens(user.id);

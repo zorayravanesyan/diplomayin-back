@@ -7,10 +7,18 @@ const registerSchema = Joi.object({
   first_name: Joi.string().min(1).max(100).required(),
   last_name: Joi.string().min(1).max(100).required(),
   gender: Joi.string().valid('MALE', 'FEMALE', 'UNKNOWN').optional(),
+  teacher_ids: Joi.array().items(Joi.number().integer().positive()).min(1).required(),
 });
 
 /** Ադմին POST /api/users/teachers — նույն դաշտերը, ինչ register */
-const createTeacherSchema = registerSchema;
+const createTeacherSchema = Joi.object({
+  email: Joi.string().email().required(),
+  username: Joi.string().alphanum().min(3).max(30).required(),
+  password: Joi.string().min(6).required(),
+  first_name: Joi.string().min(1).max(100).required(),
+  last_name: Joi.string().min(1).max(100).required(),
+  gender: Joi.string().valid('MALE', 'FEMALE', 'UNKNOWN').optional(),
+});
 
 const loginSchema = Joi.object({
   login_data: Joi.string().required(),
