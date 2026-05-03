@@ -46,6 +46,8 @@ function getStatusCode(code) {
     NOT_FOUND: 404,
     CONFLICT: 409,
     UNPROCESSABLE: 422,
+    INTERNAL_ERROR: 500,
+    SERVICE_UNAVAILABLE: 503,
   };
   return statusMap[code] || 500;
 }

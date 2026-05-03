@@ -1,0 +1,58 @@
+import { ValidationError } from '../utils/errors.js';
+import * as chatService from '../services/chatService.js';
+
+function parseConversationId(param) {
+  const id = Number.parseInt(param, 10);
+  if (!Number.isFinite(id) || id < 1) {
+    throw new ValidationError('Invalid conversation id');
+  }
+  return id;
+}
+
+export async function createConversation(req, res, next) {
+  try {
+    const result = await chatService.createConversation(req.user.id, req.body);
+    res.status(201).json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function listConversations(req, res, next) {
+  try {
+    const items = await chatService.listConversations(req.user.id);
+    res.json({ conversations: items });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getConversation(req, res, next) {
+  try {
+    const id = parseConversationId(req.params.id);
+    const result = await chatService.getConversation(req.user.id, id);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function sendMessage(req, res, next) {
+  try {
+    const id = parseConversationId(req.params.id);
+    const result = await chatService.sendMessage(req.user.id, id, req.body.content);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function deleteConversation(req, res, next) {
+  try {
+    const id = parseConversationId(req.params.id);
+    const result = await chatService.deleteConversation(req.user.id, id);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+}

@@ -26,6 +26,15 @@ export const refreshTokenSchema = Joi.object({
   refresh_token: Joi.string().required(),
 });
 
+export const sendMessageSchema = Joi.object({
+  content: Joi.string().trim().min(1).max(4000).required(),
+});
+
+export const createConversationSchema = Joi.object({
+  title: Joi.string().trim().max(120).optional().allow(null, ''),
+  first_message: Joi.string().trim().min(1).max(4000).optional(),
+});
+
 export function validate(schema) {
   return (req, res, next) => {
     const { error, value } = schema.validate(req.body, {

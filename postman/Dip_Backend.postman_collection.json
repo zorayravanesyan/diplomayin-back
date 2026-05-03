@@ -1,0 +1,210 @@
+{
+  "info": {
+    "name": "Dip Backend API",
+    "description": "All routes from the Express backend.\n\n**Variables**\n- `url` — base API root, default `http://localhost:5050/api` (so `{{url}}/auth/login` → `/api/auth/login`).\n- `token` — JWT access token; **Login** or **Register** tests auto-fill it from `accessToken`.\n\n**Health** lives at `GET /health` (not under `/api`); that request uses the same host as `url` without the `/api` suffix.\n\nOptional: after login, `refresh_token` is also stored for **Refresh token**.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "url", "value": "http://localhost:5050/api" },
+    { "key": "token", "value": "" },
+    { "key": "refresh_token", "value": "" },
+    { "key": "conversationId", "value": "1" }
+  ],
+  "item": [
+    {
+      "name": "System",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "http://localhost:5050/health",
+            "description": "Not under `/api`. Change host/port if your server differs."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if ([200, 201].includes(pm.response.code)) {",
+                  "  try {",
+                  "    const j = pm.response.json();",
+                  "    if (j.accessToken) pm.collectionVariables.set('token', j.accessToken);",
+                  "    if (j.refreshToken) pm.collectionVariables.set('refresh_token', j.refreshToken);",
+                  "  } catch (e) {}",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"username\": \"johndoe\",\n  \"password\": \"secret12\",\n  \"first_name\": \"John\",\n  \"last_name\": \"Doe\",\n  \"gender\": \"UNKNOWN\"\n}"
+            },
+            "url": "{{url}}/auth/register",
+            "description": "`gender` optional: MALE | FEMALE | UNKNOWN"
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  try {",
+                  "    const j = pm.response.json();",
+                  "    if (j.accessToken) pm.collectionVariables.set('token', j.accessToken);",
+                  "    if (j.refreshToken) pm.collectionVariables.set('refresh_token', j.refreshToken);",
+                  "  } catch (e) {}",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"login_data\": \"user@example.com\",\n  \"password\": \"secret12\"\n}"
+            },
+            "url": "{{url}}/auth/login",
+            "description": "`login_data` can be email or username."
+          }
+        },
+        {
+          "name": "Refresh token",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}"
+            },
+            "url": "{{url}}/auth/refresh",
+            "description": "Response: `{ accessToken }`. Run Login first to set `refresh_token`, or paste manually."
+          }
+        },
+        {
+          "name": "Get profile",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{url}}/auth/profile"
+          }
+        },
+        {
+          "name": "Update profile",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+            },
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"John\",\n  \"last_name\": \"Doe\",\n  \"weight_kg\": 75.5,\n  \"height_sm\": 180,\n  \"gender\": \"MALE\"\n}"
+            },
+            "url": "{{url}}/auth/profile",
+            "description": "All fields optional (partial update)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Chat (OpenAI)",
+      "item": [
+        {
+          "name": "Create conversation",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"My plan\",\n  \"first_message\": \"How do I start strength training?\"\n}"
+            },
+            "url": "{{url}}/chat/conversations",
+            "description": "`title` and `first_message` optional. If `first_message` is set, OpenAI is called and two messages are stored."
+          }
+        },
+        {
+          "name": "List conversations",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{url}}/chat/conversations"
+          }
+        },
+        {
+          "name": "Get conversation by id",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{url}}/chat/conversations/{{conversationId}}"
+          }
+        },
+        {
+          "name": "Send message",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"What about protein intake?\"\n}"
+            },
+            "url": "{{url}}/chat/conversations/{{conversationId}}/messages"
+          }
+        },
+        {
+          "name": "Delete conversation",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": "{{url}}/chat/conversations/{{conversationId}}"
+          }
+        }
+      ]
+    }
+  ]
+}
