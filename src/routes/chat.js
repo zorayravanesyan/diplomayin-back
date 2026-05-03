@@ -1,7 +1,7 @@
-import express from 'express';
-import { authenticateToken } from '../middleware/auth.js';
-import * as chatController from '../controllers/chatController.js';
-import { validate, createConversationSchema, sendMessageSchema } from '../utils/validation.js';
+const express = require('express');
+const { authenticateToken } = require('../middleware/auth.js');
+const chatController = require('../controllers/chatController.js');
+const { validate, createConversationSchema, sendMessageSchema } = require('../utils/validation.js');
 
 const router = express.Router();
 
@@ -21,4 +21,4 @@ router.post(
 );
 router.delete('/conversations/:id', authenticateToken, chatController.deleteConversation);
 
-export default router;
+module.exports = router;

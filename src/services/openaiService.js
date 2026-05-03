@@ -1,16 +1,13 @@
-import OpenAI from 'openai';
-import { AppError, ValidationError, ServiceUnavailableError } from '../utils/errors.js';
+const OpenAI = require('openai');
+const { AppError, ValidationError, ServiceUnavailableError } = require('../utils/errors.js');
 
 const MODEL = 'gpt-4o-mini';
 
 function getApiKey() {
-  return process.env.OPENAI_API_KEY;
+  return process.env.CHAT_GPT_API_KEY || process.env.OPENAI_API_KEY;
 }
 
-/**
- * @param {{ messages: Array<{ role: string; content: string }> }} params
- */
-export async function chatCompletion({ messages }) {
+async function chatCompletion({ messages }) {
   const apiKey = getApiKey();
   if (!apiKey || !apiKey.trim()) {
     throw new AppError('INTERNAL_ERROR', 'OpenAI API key not configured');
@@ -76,3 +73,7 @@ export async function chatCompletion({ messages }) {
     throw new ServiceUnavailableError('AI service unavailable');
   }
 }
+
+module.exports = {
+  chatCompletion,
+};

@@ -1,5 +1,5 @@
-import { ValidationError } from '../utils/errors.js';
-import * as chatService from '../services/chatService.js';
+const { ValidationError } = require('../utils/errors.js');
+const chatService = require('../services/chatService.js');
 
 function parseConversationId(param) {
   const id = Number.parseInt(param, 10);
@@ -9,7 +9,7 @@ function parseConversationId(param) {
   return id;
 }
 
-export async function createConversation(req, res, next) {
+async function createConversation(req, res, next) {
   try {
     const result = await chatService.createConversation(req.user.id, req.body);
     res.status(201).json(result);
@@ -18,7 +18,7 @@ export async function createConversation(req, res, next) {
   }
 }
 
-export async function listConversations(req, res, next) {
+async function listConversations(req, res, next) {
   try {
     const items = await chatService.listConversations(req.user.id);
     res.json({ conversations: items });
@@ -27,7 +27,7 @@ export async function listConversations(req, res, next) {
   }
 }
 
-export async function getConversation(req, res, next) {
+async function getConversation(req, res, next) {
   try {
     const id = parseConversationId(req.params.id);
     const result = await chatService.getConversation(req.user.id, id);
@@ -37,7 +37,7 @@ export async function getConversation(req, res, next) {
   }
 }
 
-export async function sendMessage(req, res, next) {
+async function sendMessage(req, res, next) {
   try {
     const id = parseConversationId(req.params.id);
     const result = await chatService.sendMessage(req.user.id, id, req.body.content);
@@ -47,7 +47,7 @@ export async function sendMessage(req, res, next) {
   }
 }
 
-export async function deleteConversation(req, res, next) {
+async function deleteConversation(req, res, next) {
   try {
     const id = parseConversationId(req.params.id);
     const result = await chatService.deleteConversation(req.user.id, id);
@@ -56,3 +56,11 @@ export async function deleteConversation(req, res, next) {
     next(error);
   }
 }
+
+module.exports = {
+  createConversation,
+  listConversations,
+  getConversation,
+  sendMessage,
+  deleteConversation,
+};

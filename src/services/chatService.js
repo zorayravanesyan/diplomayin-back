@@ -1,14 +1,11 @@
-import { Op } from 'sequelize';
-import { User, ChatConversation, ChatMessage } from '../models/index.js';
-import { sequelize } from '../config/database.js';
-import { NotFoundError } from '../utils/errors.js';
-import * as openaiService from './openaiService.js';
+const { Op } = require('sequelize');
+const { User, ChatConversation, ChatMessage } = require('../models/index.js');
+const { sequelize } = require('../config/database.js');
+const { NotFoundError } = require('../utils/errors.js');
+const openaiService = require('./openaiService.js');
 
 const MAX_HISTORY = 20;
 
-/**
- * Ֆիթնես/սննդաբանության համակենտրոն system prompt օգտվողի պրոֆիլով
- */
 function buildSystemPrompt(user) {
   const parts = [
     'You are a supportive fitness and nutrition assistant.',
@@ -41,9 +38,6 @@ function buildSystemPrompt(user) {
   return parts.join(' ');
 }
 
-/**
- * Վերջին MAX_HISTORY ուղերձները ըստ created_at՝ API-ի պատմությունը ճշգրիտ պատվերով։
- */
 async function fetchHistoryRows(conversationId) {
   const rows = await ChatMessage.findAll({
     where: { conversation_id: conversationId },
@@ -54,7 +48,7 @@ async function fetchHistoryRows(conversationId) {
   return rows.reverse();
 }
 
-export async function createConversation(userId, { title: titleRaw, first_message: firstMessage }) {
+async function createConversation(userId, { title: titleRaw, first_message: firstMessage }) {
   const title =
     typeof titleRaw === 'string' && titleRaw.trim().length > 0 ? titleRaw.trim().slice(0, 120) : null;
 
@@ -118,7 +112,7 @@ export async function createConversation(userId, { title: titleRaw, first_messag
   });
 }
 
-export async function listConversations(userId) {
+async function listConversations(userId) {
   const conversations = await ChatConversation.findAll({
     where: { user_id: userId },
     attributes: ['id', 'title', 'updated_at'],
@@ -162,9 +156,7 @@ export async function listConversations(userId) {
   }));
 }
 
-export async function getConversation(userId, conversationId) {
-  console.log(userId, conversationId)
-
+async function getConversation(userId, conversationId) {
   const conversation = await ChatConversation.findOne({
     where: { id: conversationId, user_id: userId },
     attributes: ['id', 'title', 'created_at', 'updated_at'],
@@ -186,7 +178,7 @@ export async function getConversation(userId, conversationId) {
   };
 }
 
-export async function sendMessage(userId, conversationId, content) {
+async function sendMessage(userId, conversationId, content) {
   const [conversation, profileUser] = await Promise.all([
     ChatConversation.findOne({
       where: { id: conversationId, user_id: userId },
@@ -247,7 +239,7 @@ export async function sendMessage(userId, conversationId, content) {
   });
 }
 
-export async function deleteConversation(userId, conversationId) {
+async function deleteConversation(userId, conversationId) {
   const conversation = await ChatConversation.findOne({
     where: { id: conversationId, user_id: userId },
     attributes: ['id'],
@@ -260,3 +252,11 @@ export async function deleteConversation(userId, conversationId) {
   await conversation.destroy();
   return { ok: true };
 }
+
+module.exports = {
+  createConversation,
+  listConversations,
+  getConversation,
+  sendMessage,
+  deleteConversation,
+};

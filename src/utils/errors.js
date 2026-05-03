@@ -42,14 +42,13 @@ class ConflictError extends AppError {
   }
 }
 
-<<<<<<< HEAD
-export class ServiceUnavailableError extends AppError {
+class ServiceUnavailableError extends AppError {
   constructor(message = 'Service temporarily unavailable') {
     super('SERVICE_UNAVAILABLE', message);
     this.name = 'ServiceUnavailableError';
   }
 }
-=======
+
 module.exports = {
   AppError,
   ValidationError,
@@ -57,5 +56,5 @@ module.exports = {
   UnauthorizedError,
   ForbiddenError,
   ConflictError,
+  ServiceUnavailableError,
 };
->>>>>>> 0e79217d6450744c0062f74289ded1a5fda20daf

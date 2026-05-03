@@ -10,7 +10,6 @@ const registerSchema = Joi.object({
   teacher_ids: Joi.array().items(Joi.number().integer().positive()).min(1).required(),
 });
 
-/** Ադմին POST /api/users/teachers — նույն դաշտերը, ինչ register */
 const createTeacherSchema = Joi.object({
   email: Joi.string().email().required(),
   username: Joi.string().alphanum().min(3).max(30).required(),
@@ -38,19 +37,15 @@ const refreshTokenSchema = Joi.object({
   refresh_token: Joi.string().required(),
 });
 
-<<<<<<< HEAD
-export const sendMessageSchema = Joi.object({
+const sendMessageSchema = Joi.object({
   content: Joi.string().trim().min(1).max(4000).required(),
 });
 
-export const createConversationSchema = Joi.object({
+const createConversationSchema = Joi.object({
   title: Joi.string().trim().max(120).optional().allow(null, ''),
   first_message: Joi.string().trim().min(1).max(4000).optional(),
 });
 
-export function validate(schema) {
-=======
-/** Ադմին PATCH /api/users/:id */
 const adminUpdateUserSchema = Joi.object({
   first_name: Joi.string().min(1).max(100),
   last_name: Joi.string().min(1).max(100),
@@ -71,7 +66,6 @@ const adminUpdateUserSchema = Joi.object({
   });
 
 function validate(schema) {
->>>>>>> 0e79217d6450744c0062f74289ded1a5fda20daf
   return (req, res, next) => {
     const { error, value } = schema.validate(req.body, {
       abortEarly: false,
@@ -101,6 +95,8 @@ module.exports = {
   loginSchema,
   updateProfileSchema,
   refreshTokenSchema,
+  sendMessageSchema,
+  createConversationSchema,
   adminUpdateUserSchema,
   validate,
 };
