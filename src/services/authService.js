@@ -1,15 +1,17 @@
-import jwt from 'jsonwebtoken';
-import { Op } from 'sequelize';
-import { User } from '../models/index.js';
-import { JWT_CONFIG } from '../config/jwt.js';
-import { UnauthorizedError, NotFoundError, ConflictError } from '../utils/errors.js';
-import { sequelize } from '../config/database.js';
+const jwt = require('jsonwebtoken');
+const { Op } = require('sequelize');
+const { User, StudentTeacher } = require('../models/index.js');
+const { JWT_CONFIG } = require('../config/jwt.js');
+const { UnauthorizedError, NotFoundError, ConflictError, ValidationError } = require('../utils/errors.js');
+const { sequelize } = require('../config/database.js');
 
-export async function registerUser(userData) {
+async function registerUser(userData) {
   return sequelize.transaction(async (t) => {
+    const { teacher_ids, ...userCreateData } = userData;
+
     // Check if email exists
     const existingEmail = await User.findOne({
-      where: { email: userData.email },
+      where: { email: userCreateData.email },
       transaction: t,
     });
     if (existingEmail) {
@@ -18,15 +20,40 @@ export async function registerUser(userData) {
 
     // Check if username exists
     const existingUsername = await User.findOne({
-      where: { username: userData.username },
+      where: { username: userCreateData.username },
       transaction: t,
     });
     if (existingUsername) {
       throw new ConflictError('Username already taken');
     }
 
+    // Validate teachers exist and are role=TICHER (single DB call)
+    const uniqueTeacherIds = Array.from(new Set(teacher_ids || []));
+    const teachers = await User.findAll({
+      attributes: ['id'],
+      where: { id: uniqueTeacherIds, role: 'TICHER' },
+      transaction: t,
+    });
+
+    if (teachers.length !== uniqueTeacherIds.length) {
+      const found = new Set(teachers.map((x) => x.id));
+      const missingTeacherIds = uniqueTeacherIds.filter((id) => !found.has(id));
+      throw new ValidationError('Invalid teacher_ids', [
+        { field: 'teacher_ids', message: 'Some teachers do not exist', missingTeacherIds },
+      ]);
+    }
+
     // Create user
-    const user = await User.create(userData, { transaction: t });
+    const user = await User.create(userCreateData, { transaction: t });
+
+    // Create relations (bulk insert)
+    await StudentTeacher.bulkCreate(
+      uniqueTeacherIds.map((teacherId) => ({
+        student_id: user.id,
+        teacher_id: teacherId,
+      })),
+      { transaction: t }
+    );
 
     // Generate tokens
     const tokens = generateTokens(user.id);
@@ -41,7 +68,7 @@ export async function registerUser(userData) {
   });
 }
 
-export async function loginUser(login_data, password) {
+async function loginUser(login_data, password) {
   const user = await User.findOne({
     where: {
       [Op.or]: [
@@ -72,7 +99,7 @@ export async function loginUser(login_data, password) {
   };
 }
 
-export async function refreshAccessToken(refreshToken) {
+async function refreshAccessToken(refreshToken) {
   try {
     const decoded = jwt.verify(refreshToken, JWT_CONFIG.refreshTokenSecret);
     const user = await User.findByPk(decoded.userId);
@@ -91,7 +118,7 @@ export async function refreshAccessToken(refreshToken) {
   }
 }
 
-export async function getUserProfile(userId) {
+async function getUserProfile(userId) {
   const user = await User.findByPk(userId);
   if (!user) {
     throw new NotFoundError('User not found');
@@ -99,7 +126,7 @@ export async function getUserProfile(userId) {
   return user.toJSON();
 }
 
-export async function updateUserProfile(userId, updateData) {
+async function updateUserProfile(userId, updateData) {
   const user = await User.findByPk(userId);
   if (!user) {
     throw new NotFoundError('User not found');
@@ -127,3 +154,11 @@ function generateRefreshToken(userId) {
     expiresIn: JWT_CONFIG.refreshTokenExpiry,
   });
 }
+
+module.exports = {
+  registerUser,
+  loginUser,
+  refreshAccessToken,
+  getUserProfile,
+  updateUserProfile,
+};

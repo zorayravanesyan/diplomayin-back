@@ -1,13 +1,13 @@
-import express from 'express';
-import * as authController from '../controllers/authController.js';
-import { authenticateToken } from '../middleware/auth.js';
-import {
+const express = require('express');
+const authController = require('../controllers/authController.js');
+const { authenticateToken } = require('../middleware/auth.js');
+const {
   validate,
   registerSchema,
   loginSchema,
   updateProfileSchema,
   refreshTokenSchema,
-} from '../utils/validation.js';
+} = require('../utils/validation.js');
 
 const router = express.Router();
 
@@ -17,4 +17,4 @@ router.post('/refresh', validate(refreshTokenSchema), authController.refreshToke
 router.get('/profile', authenticateToken, authController.getProfile);
 router.patch('/profile', authenticateToken, validate(updateProfileSchema), authController.updateProfile);
 
-export default router;
+module.exports = router;

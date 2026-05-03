@@ -1,20 +1,32 @@
-import Joi from 'joi';
+const Joi = require('joi');
 
-export const registerSchema = Joi.object({
+const registerSchema = Joi.object({
   email: Joi.string().email().required(),
   username: Joi.string().alphanum().min(3).max(30).required(),
   password: Joi.string().min(6).required(),
   first_name: Joi.string().min(1).max(100).required(),
   last_name: Joi.string().min(1).max(100).required(),
   gender: Joi.string().valid('MALE', 'FEMALE', 'UNKNOWN').optional(),
+  teacher_ids: Joi.array().items(Joi.number().integer().positive()).min(1).required(),
 });
 
-export const loginSchema = Joi.object({
+/** Ադմին POST /api/users/teachers — նույն դաշտերը, ինչ register */
+const createTeacherSchema = Joi.object({
+  email: Joi.string().email().required(),
+  username: Joi.string().alphanum().min(3).max(30).required(),
+  password: Joi.string().min(6).required(),
+  first_name: Joi.string().min(1).max(100).required(),
+  last_name: Joi.string().min(1).max(100).required(),
+  gender: Joi.string().valid('MALE', 'FEMALE', 'UNKNOWN').optional(),
+  student_ids: Joi.array().items(Joi.number().integer().positive()).min(1).required(),
+});
+
+const loginSchema = Joi.object({
   login_data: Joi.string().required(),
   password: Joi.string().required(),
 });
 
-export const updateProfileSchema = Joi.object({
+const updateProfileSchema = Joi.object({
   first_name: Joi.string().min(1).max(100),
   last_name: Joi.string().min(1).max(100),
   weight_kg: Joi.number().positive().allow(null),
@@ -22,10 +34,11 @@ export const updateProfileSchema = Joi.object({
   gender: Joi.string().valid('MALE', 'FEMALE', 'UNKNOWN'),
 });
 
-export const refreshTokenSchema = Joi.object({
+const refreshTokenSchema = Joi.object({
   refresh_token: Joi.string().required(),
 });
 
+<<<<<<< HEAD
 export const sendMessageSchema = Joi.object({
   content: Joi.string().trim().min(1).max(4000).required(),
 });
@@ -36,6 +49,29 @@ export const createConversationSchema = Joi.object({
 });
 
 export function validate(schema) {
+=======
+/** Ադմին PATCH /api/users/:id */
+const adminUpdateUserSchema = Joi.object({
+  first_name: Joi.string().min(1).max(100),
+  last_name: Joi.string().min(1).max(100),
+  email: Joi.string().email(),
+  username: Joi.string().alphanum().min(3).max(30),
+  gender: Joi.string().valid('MALE', 'FEMALE', 'UNKNOWN'),
+  password: Joi.string().min(6),
+  teacher_ids: Joi.array().items(Joi.number().integer().positive()),
+  settings: Joi.object({
+    weight_kg: Joi.number().positive().allow(null),
+    height_sm: Joi.number().integer().positive().allow(null),
+    experience_months: Joi.number().integer().min(0).allow(null),
+  }),
+})
+  .min(1)
+  .messages({
+    'object.min': 'Չի փոխվել ոչ մի դաշտ',
+  });
+
+function validate(schema) {
+>>>>>>> 0e79217d6450744c0062f74289ded1a5fda20daf
   return (req, res, next) => {
     const { error, value } = schema.validate(req.body, {
       abortEarly: false,
@@ -58,3 +94,13 @@ export function validate(schema) {
     next();
   };
 }
+
+module.exports = {
+  registerSchema,
+  createTeacherSchema,
+  loginSchema,
+  updateProfileSchema,
+  refreshTokenSchema,
+  adminUpdateUserSchema,
+  validate,
+};

@@ -1,6 +1,6 @@
-import dotenv from 'dotenv';
-import app from './src/app.js';
-import { sequelize } from './src/config/database.js';
+const dotenv = require('dotenv');
+const app = require('./src/app.js');
+const { sequelize } = require('./src/config/database.js');
 
 dotenv.config();
 
@@ -11,10 +11,6 @@ async function startServer() {
     // Test database connection
     await sequelize.authenticate();
     console.log('Database connection established.');
-
-    // Sync database (create tables if they don't exist)
-    await sequelize.sync({ alter: false });
-    console.log('Database models synchronized.');
 
     // Start server
     app.listen(PORT, () => {

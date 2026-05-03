@@ -1,9 +1,9 @@
-import jwt from 'jsonwebtoken';
-import { JWT_CONFIG } from '../config/jwt.js';
-import { User } from '../models/index.js';
-import { UnauthorizedError } from '../utils/errors.js';
+const jwt = require('jsonwebtoken');
+const { JWT_CONFIG } = require('../config/jwt.js');
+const { User } = require('../models/index.js');
+const { UnauthorizedError } = require('../utils/errors.js');
 
-export async function authenticateToken(req, res, next) {
+async function authenticateToken(req, res, next) {
   try {
     const authHeader = req.headers.authorization;
     const token = authHeader && authHeader.split(' ')[1];
@@ -31,3 +31,5 @@ export async function authenticateToken(req, res, next) {
     next(error);
   }
 }
+
+module.exports = { authenticateToken };
