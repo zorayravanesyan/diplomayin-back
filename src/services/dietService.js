@@ -3,6 +3,9 @@ const { User, UserSettings } = require('../models/index.js');
 const { AppError, NotFoundError, ValidationError } = require('../utils/errors.js');
 
 const TOP_RECOMMENDATION_COUNT = 5;
+const GENDER_MISMATCH_PENALTY = 1000;
+const AGE_SCORE_WEIGHT = 10;
+const MAX_DISTANCE_FOR_PERCENTAGE = 1000;
 const VALID_GENDERS = new Set(['male', 'female']);
 
 function isFiniteNumber(value) {
@@ -92,11 +95,16 @@ function distanceFromRange(value, min, max) {
 }
 
 function scoreRecommendation(item, userGender, bmi, age) {
-  const genderScore = userGender && item.gender !== userGender ? 1000 : 0;
+  const genderScore = userGender && item.gender !== userGender ? GENDER_MISMATCH_PENALTY : 0;
   const bmiScore = distanceFromRange(bmi, item.min_bmi, item.max_bmi);
-  const ageScore = age ? distanceFromRange(age, item.min_age, item.max_age) * 10 : 0;
+  const ageScore = age ? distanceFromRange(age, item.min_age, item.max_age) * AGE_SCORE_WEIGHT : 0;
 
   return genderScore + ageScore + bmiScore;
+}
+
+function calculateClosenessPercentage(score) {
+  const boundedScore = Math.min(Math.max(score, 0), MAX_DISTANCE_FOR_PERCENTAGE);
+  return Math.round(((MAX_DISTANCE_FOR_PERCENTAGE - boundedScore) / MAX_DISTANCE_FOR_PERCENTAGE) * 100);
 }
 
 async function getUserDietProfile(userId) {
@@ -137,7 +145,10 @@ async function getTopDietRecommendationsForUser(userId, count = TOP_RECOMMENDATI
     }))
     .sort((a, b) => a.score - b.score || a.item.id - b.item.id)
     .slice(0, limit)
-    .map(({ item }) => item);
+    .map(({ item, score }) => ({
+      ...item,
+      closeness_percentage: calculateClosenessPercentage(score),
+    }));
 
   return {
     bmi: profile.bmi,
@@ -150,5 +161,6 @@ module.exports = {
   TOP_RECOMMENDATION_COUNT,
   assertDietRecommendationsValid,
   calculateBmi,
+  calculateClosenessPercentage,
   getTopDietRecommendationsForUser,
 };
