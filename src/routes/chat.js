@@ -14,6 +14,12 @@ router.post(
 router.get('/conversations', authenticateToken, chatController.listConversations);
 router.get('/conversations/:id', authenticateToken, chatController.getConversation);
 router.post(
+  '/conversations/:id/messages/stream',
+  authenticateToken,
+  validate(sendMessageSchema),
+  chatController.sendMessageStream
+);
+router.post(
   '/conversations/:id/messages',
   authenticateToken,
   validate(sendMessageSchema),

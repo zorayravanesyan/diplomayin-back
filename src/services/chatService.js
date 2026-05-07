@@ -1,7 +1,7 @@
 const { Op } = require('sequelize');
-const { User, ChatConversation, ChatMessage } = require('../models/index.js');
+const { User, UserSettings, ChatConversation, ChatMessage } = require('../models/index.js');
 const { sequelize } = require('../config/database.js');
-const { NotFoundError } = require('../utils/errors.js');
+const { NotFoundError, ServiceUnavailableError } = require('../utils/errors.js');
 const openaiService = require('./openaiService.js');
 
 const MAX_HISTORY = 20;
@@ -24,11 +24,11 @@ function buildSystemPrompt(user) {
   if (user?.gender && user.gender !== 'UNKNOWN') {
     profileBits.push(`Gender: ${user.gender}`);
   }
-  if (user?.weight_kg != null && user.weight_kg !== '') {
-    profileBits.push(`Weight (kg): ${user.weight_kg}`);
+  if (user?.settings?.weight_kg != null && user.settings.weight_kg !== '') {
+    profileBits.push(`Weight (kg): ${user.settings.weight_kg}`);
   }
-  if (user?.height_sm != null && user.height_sm !== '') {
-    profileBits.push(`Height (cm): ${user.height_sm}`);
+  if (user?.settings?.height_sm != null && user.settings.height_sm !== '') {
+    profileBits.push(`Height (cm): ${user.settings.height_sm}`);
   }
 
   if (profileBits.length) {
@@ -48,6 +48,80 @@ async function fetchHistoryRows(conversationId) {
   return rows.reverse();
 }
 
+async function buildMessageContext(userId, conversationId, content) {
+  const [conversation, profileUser] = await Promise.all([
+    ChatConversation.findOne({
+      where: { id: conversationId, user_id: userId },
+      attributes: ['id', 'title'],
+    }),
+    User.findByPk(userId, {
+      attributes: ['gender', 'first_name'],
+      include: [
+        {
+          model: UserSettings,
+          as: 'settings',
+          attributes: ['weight_kg', 'height_sm'],
+          required: false,
+        },
+      ],
+    }),
+  ]);
+
+  if (!conversation) {
+    throw new NotFoundError('Conversation not found');
+  }
+
+  const history = await fetchHistoryRows(conversation.id);
+
+  return {
+    conversation,
+    messagesForApi: [
+      { role: 'system', content: buildSystemPrompt(profileUser) },
+      ...history.map((m) => ({ role: m.role, content: m.content })),
+      { role: 'user', content },
+    ],
+  };
+}
+
+async function persistMessagePair(conversation, content, reply, usage) {
+  return sequelize.transaction(async (t) => {
+    const created = await ChatMessage.bulkCreate(
+      [
+        { conversation_id: conversation.id, role: 'user', content },
+        {
+          conversation_id: conversation.id,
+          role: 'assistant',
+          content: reply,
+          tokens: usage?.completion_tokens ?? null,
+        },
+      ],
+      { transaction: t, returning: true }
+    );
+
+    const patch = {};
+    if (!conversation.title) {
+      patch.title = content.slice(0, 60);
+    }
+    if (Object.keys(patch).length) {
+      await conversation.update(patch, { transaction: t });
+    }
+
+    await conversation.reload({
+      attributes: ['id', 'title', 'updated_at'],
+      transaction: t,
+    });
+
+    return {
+      user_message: created[0].toJSON(),
+      assistant_message: created[1].toJSON(),
+      conversation: {
+        id: conversation.id,
+        updated_at: conversation.updated_at,
+      },
+    };
+  });
+}
+
 async function createConversation(userId, { title: titleRaw, first_message: firstMessage }) {
   const title =
     typeof titleRaw === 'string' && titleRaw.trim().length > 0 ? titleRaw.trim().slice(0, 120) : null;
@@ -62,7 +136,15 @@ async function createConversation(userId, { title: titleRaw, first_message: firs
   }
 
   const user = await User.findByPk(userId, {
-    attributes: ['gender', 'weight_kg', 'height_sm', 'first_name'],
+    attributes: ['gender', 'first_name'],
+    include: [
+      {
+        model: UserSettings,
+        as: 'settings',
+        attributes: ['weight_kg', 'height_sm'],
+        required: false,
+      },
+    ],
   });
 
   const messagesForApi = [
@@ -179,64 +261,32 @@ async function getConversation(userId, conversationId) {
 }
 
 async function sendMessage(userId, conversationId, content) {
-  const [conversation, profileUser] = await Promise.all([
-    ChatConversation.findOne({
-      where: { id: conversationId, user_id: userId },
-      attributes: ['id', 'title'],
-    }),
-    User.findByPk(userId, {
-      attributes: ['gender', 'weight_kg', 'height_sm', 'first_name'],
-    }),
-  ]);
-
-  if (!conversation) {
-    throw new NotFoundError('Conversation not found');
-  }
-
-  const history = await fetchHistoryRows(conversation.id);
-
-  const messagesForApi = [
-    { role: 'system', content: buildSystemPrompt(profileUser) },
-    ...history.map((m) => ({ role: m.role, content: m.content })),
-    { role: 'user', content },
-  ];
-
+  const { conversation, messagesForApi } = await buildMessageContext(userId, conversationId, content);
   const { content: reply, usage } = await openaiService.chatCompletion({ messages: messagesForApi });
 
-  return sequelize.transaction(async (t) => {
-    const created = await ChatMessage.bulkCreate(
-      [
-        { conversation_id: conversation.id, role: 'user', content },
-        {
-          conversation_id: conversation.id,
-          role: 'assistant',
-          content: reply,
-          tokens: usage?.completion_tokens ?? null,
-        },
-      ],
-      { transaction: t, returning: true }
-    );
+  return persistMessagePair(conversation, content, reply, usage);
+}
 
-    const patch = {};
-    if (!conversation.title) {
-      patch.title = content.slice(0, 60);
+async function sendMessageStream(userId, conversationId, content, onChunk) {
+  const { conversation, messagesForApi } = await buildMessageContext(userId, conversationId, content);
+  let reply = '';
+  let usage = null;
+
+  for await (const event of openaiService.chatCompletionStream({ messages: messagesForApi })) {
+    if (event.content) {
+      reply += event.content;
+      await onChunk(event.content);
     }
-    await conversation.update(patch, { transaction: t });
+    if (event.usage) {
+      usage = event.usage;
+    }
+  }
 
-    await conversation.reload({
-      attributes: ['id', 'title', 'updated_at'],
-      transaction: t,
-    });
+  if (!reply) {
+    throw new ServiceUnavailableError('AI returned empty response');
+  }
 
-    return {
-      user_message: created[0].toJSON(),
-      assistant_message: created[1].toJSON(),
-      conversation: {
-        id: conversation.id,
-        updated_at: conversation.updated_at,
-      },
-    };
-  });
+  return persistMessagePair(conversation, content, reply, usage);
 }
 
 async function deleteConversation(userId, conversationId) {
@@ -258,5 +308,6 @@ module.exports = {
   listConversations,
   getConversation,
   sendMessage,
+  sendMessageStream,
   deleteConversation,
 };

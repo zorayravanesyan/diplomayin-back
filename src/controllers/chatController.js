@@ -1,4 +1,4 @@
-const { ValidationError } = require('../utils/errors.js');
+const { AppError, ValidationError } = require('../utils/errors.js');
 const chatService = require('../services/chatService.js');
 
 function parseConversationId(param) {
@@ -47,6 +47,63 @@ async function sendMessage(req, res, next) {
   }
 }
 
+function writeSseEvent(res, event, data) {
+  if (res.destroyed || res.writableEnded) {
+    return false;
+  }
+
+  res.write(`event: ${event}\n`);
+  res.write(`data: ${JSON.stringify(data)}\n\n`);
+  return true;
+}
+
+function toSseError(error) {
+  if (error instanceof AppError) {
+    return {
+      code: error.code,
+      message: error.message,
+      ...(error.details && { details: error.details }),
+    };
+  }
+
+  console.error('Unhandled stream error:', error);
+  return {
+    code: 'INTERNAL_ERROR',
+    message: process.env.NODE_ENV === 'production' ? 'Internal server error' : error.message,
+  };
+}
+
+async function sendMessageStream(req, res, next) {
+  try {
+    const id = parseConversationId(req.params.id);
+
+    res.set({
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache, no-transform',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    });
+    res.flushHeaders?.();
+
+    const result = await chatService.sendMessageStream(req.user.id, id, req.body.content, async (chunk) => {
+      const didWrite = writeSseEvent(res, 'chunk', { content: chunk });
+      if (!didWrite) {
+        throw new Error('Client disconnected');
+      }
+    });
+
+    writeSseEvent(res, 'done', result);
+    res.end();
+  } catch (error) {
+    if (!res.headersSent) {
+      return next(error);
+    }
+
+    writeSseEvent(res, 'error', toSseError(error));
+    return res.end();
+  }
+}
+
 async function deleteConversation(req, res, next) {
   try {
     const id = parseConversationId(req.params.id);
@@ -62,5 +119,6 @@ module.exports = {
   listConversations,
   getConversation,
   sendMessage,
+  sendMessageStream,
   deleteConversation,
 };
