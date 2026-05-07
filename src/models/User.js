@@ -34,6 +34,15 @@ const User = sequelize.define(
       type: DataTypes.TEXT,
       allowNull: true,
     },
+    login_streak_count: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    last_login_date: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
     username: {
       type: DataTypes.STRING(30),
       allowNull: false,
