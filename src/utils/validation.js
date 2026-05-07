@@ -30,6 +30,7 @@ const updateProfileSchema = Joi.object({
   last_name: Joi.string().min(1).max(100),
   weight_kg: Joi.number().positive().allow(null),
   height_sm: Joi.number().positive().allow(null),
+  age: Joi.number().integer().min(1).max(120).allow(null),
   gender: Joi.string().valid('MALE', 'FEMALE', 'UNKNOWN'),
 });
 
@@ -57,6 +58,7 @@ const adminUpdateUserSchema = Joi.object({
   settings: Joi.object({
     weight_kg: Joi.number().positive().allow(null),
     height_sm: Joi.number().integer().positive().allow(null),
+    age: Joi.number().integer().min(1).max(120).allow(null),
     experience_months: Joi.number().integer().min(0).allow(null),
   }),
 })

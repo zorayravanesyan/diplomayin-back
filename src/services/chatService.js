@@ -24,6 +24,9 @@ function buildSystemPrompt(user) {
   if (user?.gender && user.gender !== 'UNKNOWN') {
     profileBits.push(`Gender: ${user.gender}`);
   }
+  if (user?.settings?.age != null && user.settings.age !== '') {
+    profileBits.push(`Age: ${user.settings.age}`);
+  }
   if (user?.settings?.weight_kg != null && user.settings.weight_kg !== '') {
     profileBits.push(`Weight (kg): ${user.settings.weight_kg}`);
   }
@@ -60,7 +63,6 @@ async function buildMessageContext(userId, conversationId, content) {
         {
           model: UserSettings,
           as: 'settings',
-          attributes: ['weight_kg', 'height_sm'],
           required: false,
         },
       ],
@@ -141,7 +143,6 @@ async function createConversation(userId, { title: titleRaw, first_message: firs
       {
         model: UserSettings,
         as: 'settings',
-        attributes: ['weight_kg', 'height_sm'],
         required: false,
       },
     ],

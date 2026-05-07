@@ -77,6 +77,11 @@ function calculateBmi(weightKg, heightSm) {
   return Number((weight / (heightM * heightM)).toFixed(1));
 }
 
+function normalizeAge(age) {
+  const numeric = Number(age);
+  return Number.isInteger(numeric) && numeric > 0 ? numeric : null;
+}
+
 function distanceFromRange(value, min, max) {
   if (max === -1) {
     return value >= min ? 0 : min - value;
@@ -86,11 +91,12 @@ function distanceFromRange(value, min, max) {
   return 0;
 }
 
-function scoreRecommendation(item, userGender, bmi) {
+function scoreRecommendation(item, userGender, bmi, age) {
   const genderScore = userGender && item.gender !== userGender ? 1000 : 0;
   const bmiScore = distanceFromRange(bmi, item.min_bmi, item.max_bmi);
+  const ageScore = age ? distanceFromRange(age, item.min_age, item.max_age) * 10 : 0;
 
-  return genderScore + bmiScore;
+  return genderScore + ageScore + bmiScore;
 }
 
 async function getUserDietProfile(userId) {
@@ -100,7 +106,6 @@ async function getUserDietProfile(userId) {
       {
         model: UserSettings,
         as: 'settings',
-        attributes: ['weight_kg', 'height_sm'],
         required: false,
       },
     ],
@@ -116,6 +121,7 @@ async function getUserDietProfile(userId) {
   return {
     gender: normalizeGender(plain.gender),
     bmi,
+    age: normalizeAge(plain.settings?.age),
   };
 }
 
@@ -127,7 +133,7 @@ async function getTopDietRecommendationsForUser(userId, count = TOP_RECOMMENDATI
   const recommendations = [...dietRecommendations]
     .map((item) => ({
       item,
-      score: scoreRecommendation(item, profile.gender, profile.bmi),
+      score: scoreRecommendation(item, profile.gender, profile.bmi, profile.age),
     }))
     .sort((a, b) => a.score - b.score || a.item.id - b.item.id)
     .slice(0, limit)
@@ -135,6 +141,7 @@ async function getTopDietRecommendationsForUser(userId, count = TOP_RECOMMENDATI
 
   return {
     bmi: profile.bmi,
+    age: profile.age,
     data: recommendations,
   };
 }

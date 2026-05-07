@@ -115,6 +115,7 @@ async function getUserWithRelationsById(targetIdRaw, requester) {
     ? {
         weight_kg: settingsRaw.weight_kg,
         height_sm: settingsRaw.height_sm,
+        age: settingsRaw.age,
         experience_months: settingsRaw.experience_months,
       }
     : null;
@@ -218,6 +219,7 @@ async function updateUserByAdmin(targetIdRaw, body, requester) {
         defaults: {
           weight_kg: null,
           height_sm: null,
+          age: null,
           experience_months: 0,
         },
         transaction: t,
@@ -228,6 +230,9 @@ async function updateUserByAdmin(targetIdRaw, body, requester) {
       }
       if (settingsBody.height_sm !== undefined) {
         sPatch.height_sm = settingsBody.height_sm;
+      }
+      if (settingsBody.age !== undefined) {
+        sPatch.age = settingsBody.age;
       }
       if (settingsBody.experience_months !== undefined) {
         sPatch.experience_months = settingsBody.experience_months;

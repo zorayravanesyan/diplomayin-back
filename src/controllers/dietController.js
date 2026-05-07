@@ -6,6 +6,7 @@ async function getRandomRecommendations(req, res, next) {
     res.json({
       success: true,
       bmi: result.bmi,
+      age: result.age,
       data: result.data,
     });
   } catch (error) {

@@ -22,6 +22,10 @@ const UserSettings = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: true,
     },
+    age: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
     experience_months: {
       type: DataTypes.INTEGER,
       allowNull: false,

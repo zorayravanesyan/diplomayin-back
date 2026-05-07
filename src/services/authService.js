@@ -124,7 +124,6 @@ async function getUserProfile(userId) {
       {
         model: UserSettings,
         as: 'settings',
-        attributes: ['weight_kg', 'height_sm'],
         required: false,
       },
     ],
@@ -145,7 +144,7 @@ async function updateUserProfile(userId, updateData) {
       throw new NotFoundError('User not found');
     }
 
-    const { weight_kg, height_sm, ...userFields } = updateData;
+    const { weight_kg, height_sm, age, ...userFields } = updateData;
     const userPatch = {};
     ['first_name', 'last_name', 'gender'].forEach((field) => {
       if (userFields[field] !== undefined) {
@@ -164,6 +163,9 @@ async function updateUserProfile(userId, updateData) {
     if (height_sm !== undefined) {
       settingsPatch.height_sm = height_sm;
     }
+    if (age !== undefined) {
+      settingsPatch.age = age;
+    }
 
     if (Object.keys(settingsPatch).length > 0) {
       const [settings] = await UserSettings.findOrCreate({
@@ -171,6 +173,7 @@ async function updateUserProfile(userId, updateData) {
         defaults: {
           weight_kg: null,
           height_sm: null,
+          age: null,
           experience_months: 0,
         },
         transaction: t,
