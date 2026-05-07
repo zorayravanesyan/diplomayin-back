@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const { Op } = require('sequelize');
-const { User, StudentTeacher } = require('../models/index.js');
+const { User, StudentTeacher, UserSettings } = require('../models/index.js');
 const { JWT_CONFIG } = require('../config/jwt.js');
 const { UnauthorizedError, NotFoundError, ConflictError, ValidationError } = require('../utils/errors.js');
 const { sequelize } = require('../config/database.js');
@@ -119,7 +119,16 @@ async function refreshAccessToken(refreshToken) {
 }
 
 async function getUserProfile(userId) {
-  const user = await User.findByPk(userId);
+  const user = await User.findByPk(userId, {
+    include: [
+      {
+        model: UserSettings,
+        as: 'settings',
+        attributes: ['weight_kg', 'height_sm'],
+        required: false,
+      },
+    ],
+  });
   if (!user) {
     throw new NotFoundError('User not found');
   }
@@ -127,13 +136,50 @@ async function getUserProfile(userId) {
 }
 
 async function updateUserProfile(userId, updateData) {
-  const user = await User.findByPk(userId);
-  if (!user) {
-    throw new NotFoundError('User not found');
-  }
+  await sequelize.transaction(async (t) => {
+    const user = await User.findByPk(userId, {
+      transaction: t,
+      lock: t.LOCK.UPDATE,
+    });
+    if (!user) {
+      throw new NotFoundError('User not found');
+    }
 
-  await user.update(updateData);
-  return user.toJSON();
+    const { weight_kg, height_sm, ...userFields } = updateData;
+    const userPatch = {};
+    ['first_name', 'last_name', 'gender'].forEach((field) => {
+      if (userFields[field] !== undefined) {
+        userPatch[field] = userFields[field];
+      }
+    });
+
+    if (Object.keys(userPatch).length > 0) {
+      await user.update(userPatch, { transaction: t });
+    }
+
+    const settingsPatch = {};
+    if (weight_kg !== undefined) {
+      settingsPatch.weight_kg = weight_kg;
+    }
+    if (height_sm !== undefined) {
+      settingsPatch.height_sm = height_sm;
+    }
+
+    if (Object.keys(settingsPatch).length > 0) {
+      const [settings] = await UserSettings.findOrCreate({
+        where: { user_id: userId },
+        defaults: {
+          weight_kg: null,
+          height_sm: null,
+          experience_months: 0,
+        },
+        transaction: t,
+      });
+      await settings.update(settingsPatch, { transaction: t });
+    }
+  });
+
+  return getUserProfile(userId);
 }
 
 function generateTokens(userId) {
