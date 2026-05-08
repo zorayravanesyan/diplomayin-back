@@ -7,6 +7,8 @@ function getApiKey() {
   return process.env.CHAT_GPT_API_KEY || process.env.OPENAI_API_KEY;
 }
 
+
+
 function createClient() {
   const apiKey = getApiKey();
   if (!apiKey || !apiKey.trim()) {
