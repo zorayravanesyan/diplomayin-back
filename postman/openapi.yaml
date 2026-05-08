@@ -1,0 +1,679 @@
+openapi: 3.0.0
+info:
+  title: Diplomayn API
+  description: >-
+    Complete collection for the dip Express backend.
+
+
+    **Variables**
+
+    - `baseUrl` — e.g. `http://localhost:5050` (no trailing slash).
+
+    - `token` — paste `accessToken` from Register or Login into this variable
+    for protected routes.
+
+    - `refreshToken` — paste from Register/Login for the Refresh request body
+    field mapping.
+
+    - `userId` — target user id for `GET/PATCH /api/users/:id`.
+
+    - `conversationId` — id from chat list or create response.
+
+
+    **Notes**
+
+    - Register requires `teacher_ids` (array of existing user ids with role
+    `TICHER`).
+
+    - Refresh body field is **`refresh_token`** (snake_case); the collection
+    variable **`refreshToken`** is referenced as
+    `{"refresh_token":"{{refreshToken}}"}`.
+
+    - Admin routes need a user with `role` **ADMIN**.
+
+    - `POST .../messages/stream` returns **SSE** (`text/event-stream`); Postman
+    may buffer or behave differently than curl/browser.
+  version: 1.0.0
+servers:
+  - url: http://localhost:5050
+    description: Local (use collection baseUrl)
+tags:
+  - name: System
+    description: Non-versioned operational endpoint.
+  - name: Auth
+    description: Registration, JWT login/refresh, and self-service profile.
+  - name: Users
+    description: >-
+      Rosters, relations, admin maintenance. Most routes require Bearer; admin
+      routes also require role ADMIN.
+  - name: Chat
+    description: OpenAI-backed fitness assistant. Requires valid OpenAI config on server.
+  - name: Diet
+    description: Ranked diet recommendations from static dataset using BMI/age/gender.
+paths:
+  /health:
+    get:
+      tags:
+        - System
+      summary: Health check
+      description: Liveness probe. Returns JSON with service status.
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/auth/register:
+    post:
+      tags:
+        - Auth
+      summary: Register student
+      description: >-
+        Creates a new **STUDENT** user, links them to teachers, hashes password,
+        and returns JWTs.
+
+
+        **Body fields**
+
+        - `email` — unique contact email.
+
+        - `username` — unique, 3–30 alphanumeric chars.
+
+        - `password` — min 6 characters (stored hashed).
+
+        - `first_name`, `last_name` — display name.
+
+        - `teacher_ids` — **required** non-empty array of user ids whose `role`
+        is `TICHER`; invalid ids return validation error.
+
+        - `gender` — optional enum: `MALE`, `FEMALE`, or `UNKNOWN`.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                email: student@example.com
+                username: student01
+                password: secret12
+                first_name: Anna
+                last_name: Smith
+                gender: FEMALE
+                teacher_ids:
+                  - 1
+      parameters:
+        - name: Content-Type
+          in: header
+          schema:
+            type: string
+          example: application/json
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/auth/login:
+    post:
+      tags:
+        - Auth
+      summary: Login
+      description: >-
+        Authenticates by email **or** username. Updates refresh token hash,
+        optionally bumps `login_streak_count`.
+
+
+        **Body fields**
+
+        - `login_data` — email address or username string.
+
+        - `password` — plain password.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                login_data: student@example.com
+                password: secret12
+      parameters:
+        - name: Content-Type
+          in: header
+          schema:
+            type: string
+          example: application/json
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/auth/refresh:
+    post:
+      tags:
+        - Auth
+      summary: Refresh access token
+      description: >-
+        Issues a new access JWT if the refresh token matches the one stored for
+        the user.
+
+
+        **Body fields**
+
+        - `refresh_token` — the long-lived JWT returned by register/login
+        (snake_case per API).
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                refresh_token: '{{refreshToken}}'
+      parameters:
+        - name: Content-Type
+          in: header
+          schema:
+            type: string
+          example: application/json
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/auth/profile:
+    get:
+      tags:
+        - Auth
+      summary: Get my profile
+      description: >-
+        Returns the authenticated user JSON with nested **`settings`**
+        (`UserSettings`: weight, height, age, experience_months). Password and
+        refresh_token are stripped.
+      parameters:
+        - name: Authorization
+          in: header
+          schema:
+            type: string
+          example: Bearer {{token}}
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+    patch:
+      tags:
+        - Auth
+      summary: Update my profile
+      description: >-
+        Patches own profile: user table fields (`first_name`, `last_name`,
+        `gender`) plus metrics stored in **`UserSettings`** (`weight_kg`,
+        `height_sm`, `age`). Omit fields you do not want to change.
+
+
+        **Body fields (all optional; send at least one)**
+
+        - `first_name` / `last_name`
+
+        - `gender` — `MALE`, `FEMALE`, `UNKNOWN`
+
+        - `weight_kg` — positive number or null
+
+        - `height_sm` — positive number or null
+
+        - `age` — integer 1–120 or null
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                first_name: Anna
+                last_name: Smith
+                weight_kg: 72.5
+                height_sm: 170
+                age: 28
+      parameters:
+        - name: Content-Type
+          in: header
+          schema:
+            type: string
+          example: application/json
+        - name: Authorization
+          in: header
+          schema:
+            type: string
+          example: Bearer {{token}}
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/users/admin/overview:
+    get:
+      tags:
+        - Users
+      summary: Admin — overview (teachers + students)
+      description: >-
+        **Admin only.** Returns two arrays: all users with role `TICHER` and all
+        with role `STUDENT` (roster fields only).
+      parameters:
+        - name: Authorization
+          in: header
+          schema:
+            type: string
+          example: Bearer {{token}}
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/users/admin/teachers:
+    get:
+      tags:
+        - Users
+      summary: Admin — teachers roster
+      description: '**Admin only.** List all teachers.'
+      parameters:
+        - name: Authorization
+          in: header
+          schema:
+            type: string
+          example: Bearer {{token}}
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/users/admin/students:
+    get:
+      tags:
+        - Users
+      summary: Admin — students roster
+      description: '**Admin only.** List all students.'
+      parameters:
+        - name: Authorization
+          in: header
+          schema:
+            type: string
+          example: Bearer {{token}}
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/users/teachers:
+    get:
+      tags:
+        - Users
+      summary: Public — list teachers
+      description: >-
+        Unauthenticated catalog of users with role `TICHER` (for picking
+        `teacher_ids` at registration).
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+    post:
+      tags:
+        - Users
+      summary: Admin — create teacher
+      description: >-
+        **Admin only.** Creates user with role `TICHER` and links to students.
+
+
+        **Body fields**
+
+        - Same identity fields as register (`email`, `username`, `password`,
+        `first_name`, `last_name`, optional `gender`).
+
+        - `student_ids` — **required** non-empty array of existing **STUDENT**
+        user ids.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                email: newcoach@example.com
+                username: coach02
+                password: secret12
+                first_name: Jordan
+                last_name: Lee
+                gender: UNKNOWN
+                student_ids:
+                  - 2
+      parameters:
+        - name: Content-Type
+          in: header
+          schema:
+            type: string
+          example: application/json
+        - name: Authorization
+          in: header
+          schema:
+            type: string
+          example: Bearer {{token}}
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/users/me/teachers:
+    get:
+      tags:
+        - Users
+      summary: My teachers (student)
+      description: '**Student only.** Linked teachers via `student_teachers`.'
+      parameters:
+        - name: Authorization
+          in: header
+          schema:
+            type: string
+          example: Bearer {{token}}
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/users/me/students:
+    get:
+      tags:
+        - Users
+      summary: My students (teacher)
+      description: '**Teacher only.** Linked students.'
+      parameters:
+        - name: Authorization
+          in: header
+          schema:
+            type: string
+          example: Bearer {{token}}
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/users/{userId}:
+    get:
+      tags:
+        - Users
+      summary: Get user by id
+      description: >-
+        Returns full permitted profile: core user (no password), flattened
+        `settings`, `teachers` or `students` arrays, `teacher_ids` for students.
+
+        Authorization: self, linked teacher/student, or admin.
+      parameters:
+        - name: Authorization
+          in: header
+          schema:
+            type: string
+          example: Bearer {{token}}
+        - name: userId
+          in: path
+          schema:
+            type: string
+          required: true
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+    patch:
+      tags:
+        - Users
+      summary: Admin — patch user by id
+      description: >-
+        **Admin only.** Partial update.
+
+
+        **Body fields** (subset allowed)
+
+        - `first_name`, `last_name`, `email`, `username`, `gender`, `password`
+
+        - `teacher_ids` — when target is **STUDENT**, must be non-empty valid
+        teacher ids (replaces links)
+
+        - `settings` — object with optional `weight_kg`, `height_sm`, `age`,
+        `experience_months`
+
+
+        At least one field required.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                teacher_ids:
+                  - 1
+                settings:
+                  weight_kg: 71
+                  height_sm: 170
+                  age: 29
+                  experience_months: 8
+      parameters:
+        - name: Content-Type
+          in: header
+          schema:
+            type: string
+          example: application/json
+        - name: Authorization
+          in: header
+          schema:
+            type: string
+          example: Bearer {{token}}
+        - name: userId
+          in: path
+          schema:
+            type: string
+          required: true
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/chat/conversations:
+    post:
+      tags:
+        - Chat
+      summary: Create conversation
+      description: >-
+        Starts a conversation. If **`first_message`** is omitted, returns empty
+        `messages` and no AI call. If provided, server calls OpenAI, persists
+        user+assistant messages, may auto-set `title` from message prefix.
+
+
+        **Body fields**
+
+        - `title` — optional string up to 120 chars (blank ok).
+
+        - `first_message` — optional first user turn (1–4000 chars).
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                title: Meal prep help
+                first_message: Give me a simple high-protein breakfast idea.
+      parameters:
+        - name: Content-Type
+          in: header
+          schema:
+            type: string
+          example: application/json
+        - name: Authorization
+          in: header
+          schema:
+            type: string
+          example: Bearer {{token}}
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+    get:
+      tags:
+        - Chat
+      summary: List conversations
+      description: >-
+        Returns conversation summaries with `last_message_preview` (up to 120
+        chars of latest message).
+      parameters:
+        - name: Authorization
+          in: header
+          schema:
+            type: string
+          example: Bearer {{token}}
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/chat/conversations/{conversationId}:
+    get:
+      tags:
+        - Chat
+      summary: Get conversation with messages
+      description: Full transcript for the authenticated owner.
+      parameters:
+        - name: Authorization
+          in: header
+          schema:
+            type: string
+          example: Bearer {{token}}
+        - name: conversationId
+          in: path
+          schema:
+            type: string
+          required: true
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+    delete:
+      tags:
+        - Chat
+      summary: Delete conversation
+      description: 'Cascades messages. Returns `{ ok: true }` when successful.'
+      parameters:
+        - name: Authorization
+          in: header
+          schema:
+            type: string
+          example: Bearer {{token}}
+        - name: conversationId
+          in: path
+          schema:
+            type: string
+          required: true
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/chat/conversations/{conversationId}/messages:
+    post:
+      tags:
+        - Chat
+      summary: Send message
+      description: >-
+        Appends user message, calls OpenAI with recent history + system prompt,
+        saves assistant reply.
+
+
+        **Body fields**
+
+        - `content` — user message, 1–4000 characters.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                content: Any vegan swap for yogurt?
+      parameters:
+        - name: Content-Type
+          in: header
+          schema:
+            type: string
+          example: application/json
+        - name: Authorization
+          in: header
+          schema:
+            type: string
+          example: Bearer {{token}}
+        - name: conversationId
+          in: path
+          schema:
+            type: string
+          required: true
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/chat/conversations/{conversationId}/messages/stream:
+    post:
+      tags:
+        - Chat
+      summary: Send message (stream SSE)
+      description: >-
+        Same as Send message but streams assistant tokens via **Server-Sent
+        Events** (`text/event-stream`). Events: `chunk` with `{ content }`,
+        final `done` with same envelope as non-stream JSON, or `error`.
+
+        Postman often buffers SSE; curl or browser EventSource matches
+        production behavior.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                content: Short tip for hydration during workouts.
+      parameters:
+        - name: Content-Type
+          in: header
+          schema:
+            type: string
+          example: application/json
+        - name: Authorization
+          in: header
+          schema:
+            type: string
+          example: Bearer {{token}}
+        - name: conversationId
+          in: path
+          schema:
+            type: string
+          required: true
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/diet/random:
+    get:
+      tags:
+        - Diet
+      summary: Random / top diet recommendations
+      description: >-
+        Computes BMI from `UserSettings.weight_kg` and `height_sm` (both must be
+        positive) and scores catalog entries.
+
+        Returns top matches with **`closeness_percentage`** plus `success`,
+        `bmi`, and normalized `age` from profile.
+
+        If weight/height missing, API responds with validation error (HTTP 422
+        from error handler).
+      parameters:
+        - name: Authorization
+          in: header
+          schema:
+            type: string
+          example: Bearer {{token}}
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
