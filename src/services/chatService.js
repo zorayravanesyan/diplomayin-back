@@ -17,23 +17,15 @@ function buildSystemPrompt(user) {
     'Prefer concrete, actionable advice tailored to stated goals.',
   ];
 
-  const profileBits = [];
-  if (user?.first_name) {
-    profileBits.push(`Preferred name/context: ${user.first_name}`);
-  }
-  if (user?.gender && user.gender !== 'UNKNOWN') {
-    profileBits.push(`Gender: ${user.gender}`);
-  }
-  if (user?.settings?.age != null && user.settings.age !== '') {
-    profileBits.push(`Age: ${user.settings.age}`);
-  }
-  if (user?.settings?.weight_kg != null && user.settings.weight_kg !== '') {
-    profileBits.push(`Weight (kg): ${user.settings.weight_kg}`);
-  }
-  if (user?.settings?.height_sm != null && user.settings.height_sm !== '') {
-    profileBits.push(`Height (cm): ${user.settings.height_sm}`);
-  }
-
+  const profileBits = [
+    ...user?.first_name && user.first_name !== '' ? [`Preferred name/context: ${user.first_name}`] : [],
+    ...user?.gender && user.gender !== 'UNKNOWN' ? [`Gender: ${user.gender}`] : [],
+    ...user?.settings?.age != null && user.settings.age !== '' ? [`Age: ${user.settings.age}`] : [],
+    ...user?.settings?.weight_kg != null && user.settings.weight_kg !== '' ? [`Weight (kg): ${user.settings.weight_kg}`] : [],
+    ...user?.settings?.height_sm != null && user.settings.height_sm !== '' ? [`Height (cm): ${user.settings.height_sm}`] : [],
+    ...user?.settings?.weight_kg != null && user.settings.weight_kg !== '' ? [`Weight (kg): ${user.settings.weight_kg}`] : [],
+  ];
+ 
   if (profileBits.length) {
     parts.push(`User notes (trust but verify):\n${profileBits.join('; ')}.`);
   }
