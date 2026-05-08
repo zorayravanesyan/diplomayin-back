@@ -1,0 +1,1333 @@
+{
+  "info": {
+    "_postman_id": "7d75f26a-42cd-49fb-99ba-95f74f8f84e9",
+    "name": "Diplomayn API",
+    "description": "Complete collection for the dip Express backend.\n\n**Variables**\n- `baseUrl` — e.g. `http://localhost:5050` (no trailing slash).\n- `token` — paste `accessToken` from Register or Login into this variable for protected routes.\n- `refreshToken` — paste from Register/Login for the Refresh request body field mapping.\n- `userId` — target user id for `GET/PATCH /api/users/:id`.\n- `conversationId` — id from chat list or create response.\n\n**Notes**\n- Register requires `teacher_ids` (array of existing user ids with role `TICHER`).\n- Refresh body field is **`refresh_token`** (snake_case); the collection variable **`refreshToken`** is referenced as `{\"refresh_token\":\"{{refreshToken}}\"}`.\n- Admin routes need a user with `role` **ADMIN**.\n- `POST .../messages/stream` returns **SSE** (`text/event-stream`); Postman may buffer or behave differently than curl/browser.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5050"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "refreshToken",
+      "value": ""
+    },
+    {
+      "key": "userId",
+      "value": "1"
+    },
+    {
+      "key": "conversationId",
+      "value": "1"
+    }
+  ],
+  "item": [
+    {
+      "name": "System",
+      "description": "Non-versioned operational endpoint.",
+      "item": [
+        {
+          "name": "Health check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "description": "Liveness probe. Returns JSON with service status."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    ""
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"status\": \"ok\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "description": "Registration, JWT login/refresh, and self-service profile.",
+      "item": [
+        {
+          "name": "Register student",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"student@example.com\",\n  \"username\": \"student01\",\n  \"password\": \"secret12\",\n  \"first_name\": \"Anna\",\n  \"last_name\": \"Smith\",\n  \"gender\": \"FEMALE\",\n  \"teacher_ids\": [\n    1\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Creates a new **STUDENT** user, links them to teachers, hashes password, and returns JWTs.\n\n**Body fields**\n- `email` — unique contact email.\n- `username` — unique, 3–30 alphanumeric chars.\n- `password` — min 6 characters (stored hashed).\n- `first_name`, `last_name` — display name.\n- `teacher_ids` — **required** non-empty array of user ids whose `role` is `TICHER`; invalid ids return validation error.\n- `gender` — optional enum: `MALE`, `FEMALE`, or `UNKNOWN`."
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    ""
+                  ]
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"user\": {\n    \"id\": 2,\n    \"first_name\": \"Anna\",\n    \"last_name\": \"Smith\",\n    \"email\": \"student@example.com\",\n    \"username\": \"student01\",\n    \"gender\": \"FEMALE\",\n    \"role\": \"STUDENT\",\n    \"login_streak_count\": 0,\n    \"last_login_date\": null,\n    \"created_at\": \"2026-05-08T12:00:00.000Z\",\n    \"updated_at\": \"2026-05-08T12:00:00.000Z\"\n  },\n  \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.sample\",\n  \"refreshToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.sample_refresh\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"login_data\": \"student@example.com\",\n  \"password\": \"secret12\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Authenticates by email **or** username. Updates refresh token hash, optionally bumps `login_streak_count`.\n\n**Body fields**\n- `login_data` — email address or username string.\n- `password` — plain password."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    ""
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"user\": {\n    \"id\": 2,\n    \"first_name\": \"Anna\",\n    \"last_name\": \"Smith\",\n    \"email\": \"student@example.com\",\n    \"username\": \"student01\",\n    \"gender\": \"FEMALE\",\n    \"role\": \"STUDENT\",\n    \"login_streak_count\": 1,\n    \"last_login_date\": \"2026-05-08T14:30:00.000Z\",\n    \"created_at\": \"2026-05-08T12:00:00.000Z\",\n    \"updated_at\": \"2026-05-08T14:30:00.000Z\"\n  },\n  \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.sample\",\n  \"refreshToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.sample_refresh\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Refresh access token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{refreshToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "refresh"
+              ]
+            },
+            "description": "Issues a new access JWT if the refresh token matches the one stored for the user.\n\n**Body fields**\n- `refresh_token` — the long-lived JWT returned by register/login (snake_case per API)."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    ""
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.new_access\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get my profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "profile"
+              ]
+            },
+            "description": "Returns the authenticated user JSON with nested **`settings`** (`UserSettings`: weight, height, age, experience_months). Password and refresh_token are stripped."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    ""
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"user\": {\n    \"id\": 2,\n    \"first_name\": \"Anna\",\n    \"last_name\": \"Smith\",\n    \"email\": \"student@example.com\",\n    \"username\": \"student01\",\n    \"gender\": \"FEMALE\",\n    \"role\": \"STUDENT\",\n    \"login_streak_count\": 1,\n    \"last_login_date\": \"2026-05-08T14:30:00.000Z\",\n    \"settings\": {\n      \"id\": 1,\n      \"user_id\": 2,\n      \"weight_kg\": \"72.50\",\n      \"height_sm\": 170,\n      \"age\": 28,\n      \"experience_months\": 6,\n      \"created_at\": \"2026-05-08T12:00:00.000Z\",\n      \"updated_at\": \"2026-05-08T15:00:00.000Z\"\n    },\n    \"created_at\": \"2026-05-08T12:00:00.000Z\",\n    \"updated_at\": \"2026-05-08T14:30:00.000Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update my profile",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Anna\",\n  \"last_name\": \"Smith\",\n  \"weight_kg\": 72.5,\n  \"height_sm\": 170,\n  \"age\": 28\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "profile"
+              ]
+            },
+            "description": "Patches own profile: user table fields (`first_name`, `last_name`, `gender`) plus metrics stored in **`UserSettings`** (`weight_kg`, `height_sm`, `age`). Omit fields you do not want to change.\n\n**Body fields (all optional; send at least one)**\n- `first_name` / `last_name`\n- `gender` — `MALE`, `FEMALE`, `UNKNOWN`\n- `weight_kg` — positive number or null\n- `height_sm` — positive number or null\n- `age` — integer 1–120 or null"
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    ""
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"user\": {\n    \"id\": 2,\n    \"first_name\": \"Anna\",\n    \"last_name\": \"Smith\",\n    \"email\": \"student@example.com\",\n    \"username\": \"student01\",\n    \"gender\": \"FEMALE\",\n    \"role\": \"STUDENT\",\n    \"login_streak_count\": 1,\n    \"last_login_date\": \"2026-05-08T14:30:00.000Z\",\n    \"settings\": {\n      \"id\": 1,\n      \"user_id\": 2,\n      \"weight_kg\": \"72.50\",\n      \"height_sm\": 170,\n      \"age\": 28,\n      \"experience_months\": 6,\n      \"created_at\": \"2026-05-08T12:00:00.000Z\",\n      \"updated_at\": \"2026-05-08T16:00:00.000Z\"\n    },\n    \"created_at\": \"2026-05-08T12:00:00.000Z\",\n    \"updated_at\": \"2026-05-08T16:00:00.000Z\"\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "description": "Rosters, relations, admin maintenance. Most routes require Bearer; admin routes also require role ADMIN.",
+      "item": [
+        {
+          "name": "Admin — overview (teachers + students)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/admin/overview",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "admin",
+                "overview"
+              ]
+            },
+            "description": "**Admin only.** Returns two arrays: all users with role `TICHER` and all with role `STUDENT` (roster fields only)."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    ""
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"teachers\": [\n    {\n      \"id\": 1,\n      \"first_name\": \"Coach\",\n      \"last_name\": \"Taylor\",\n      \"username\": \"coach1\",\n      \"gender\": \"MALE\"\n    }\n  ],\n  \"students\": [\n    {\n      \"id\": 2,\n      \"first_name\": \"Anna\",\n      \"last_name\": \"Smith\",\n      \"username\": \"student01\",\n      \"gender\": \"FEMALE\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Admin — teachers roster",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/admin/teachers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "admin",
+                "teachers"
+              ]
+            },
+            "description": "**Admin only.** List all teachers."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    ""
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"teachers\": [\n    {\n      \"id\": 1,\n      \"first_name\": \"Coach\",\n      \"last_name\": \"Taylor\",\n      \"username\": \"coach1\",\n      \"gender\": \"MALE\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Admin — students roster",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/admin/students",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "admin",
+                "students"
+              ]
+            },
+            "description": "**Admin only.** List all students."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    ""
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"students\": [\n    {\n      \"id\": 2,\n      \"first_name\": \"Anna\",\n      \"last_name\": \"Smith\",\n      \"username\": \"student01\",\n      \"gender\": \"FEMALE\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Public — list teachers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/teachers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "teachers"
+              ]
+            },
+            "description": "Unauthenticated catalog of users with role `TICHER` (for picking `teacher_ids` at registration)."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    ""
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"teachers\": [\n    {\n      \"id\": 1,\n      \"first_name\": \"Coach\",\n      \"last_name\": \"Taylor\",\n      \"username\": \"coach1\",\n      \"gender\": \"MALE\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "My teachers (student)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/me/teachers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "me",
+                "teachers"
+              ]
+            },
+            "description": "**Student only.** Linked teachers via `student_teachers`."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    ""
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"teachers\": [\n    {\n      \"id\": 1,\n      \"first_name\": \"Coach\",\n      \"last_name\": \"Taylor\",\n      \"username\": \"coach1\",\n      \"gender\": \"MALE\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "My students (teacher)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/me/students",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "me",
+                "students"
+              ]
+            },
+            "description": "**Teacher only.** Linked students."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    ""
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"students\": [\n    {\n      \"id\": 2,\n      \"first_name\": \"Anna\",\n      \"last_name\": \"Smith\",\n      \"username\": \"student01\",\n      \"gender\": \"FEMALE\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Admin — create teacher",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"newcoach@example.com\",\n  \"username\": \"coach02\",\n  \"password\": \"secret12\",\n  \"first_name\": \"Jordan\",\n  \"last_name\": \"Lee\",\n  \"gender\": \"UNKNOWN\",\n  \"student_ids\": [\n    2\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/teachers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "teachers"
+              ]
+            },
+            "description": "**Admin only.** Creates user with role `TICHER` and links to students.\n\n**Body fields**\n- Same identity fields as register (`email`, `username`, `password`, `first_name`, `last_name`, optional `gender`).\n- `student_ids` — **required** non-empty array of existing **STUDENT** user ids."
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    ""
+                  ]
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"user\": {\n    \"id\": 3,\n    \"first_name\": \"Jordan\",\n    \"last_name\": \"Lee\",\n    \"email\": \"newcoach@example.com\",\n    \"username\": \"coach02\",\n    \"gender\": \"UNKNOWN\",\n    \"role\": \"TICHER\",\n    \"login_streak_count\": 0,\n    \"last_login_date\": null,\n    \"created_at\": \"2026-05-08T17:00:00.000Z\",\n    \"updated_at\": \"2026-05-08T17:00:00.000Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get user by id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{userId}}"
+              ]
+            },
+            "description": "Returns full permitted profile: core user (no password), flattened `settings`, `teachers` or `students` arrays, `teacher_ids` for students.\nAuthorization: self, linked teacher/student, or admin."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    ""
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"user\": {\n    \"id\": 2,\n    \"first_name\": \"Anna\",\n    \"last_name\": \"Smith\",\n    \"email\": \"student@example.com\",\n    \"username\": \"student01\",\n    \"gender\": \"FEMALE\",\n    \"role\": \"STUDENT\",\n    \"login_streak_count\": 1,\n    \"last_login_date\": \"2026-05-08T14:30:00.000Z\",\n    \"created_at\": \"2026-05-08T12:00:00.000Z\",\n    \"updated_at\": \"2026-05-08T16:00:00.000Z\",\n    \"settings\": {\n      \"weight_kg\": \"72.50\",\n      \"height_sm\": 170,\n      \"age\": 28,\n      \"experience_months\": 6\n    },\n    \"teachers\": [\n      {\n        \"id\": 1,\n        \"first_name\": \"Coach\",\n        \"last_name\": \"Taylor\",\n        \"username\": \"coach1\",\n        \"gender\": \"MALE\"\n      }\n    ],\n    \"students\": [],\n    \"teacher_ids\": [\n      1\n    ]\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Admin — patch user by id",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"teacher_ids\": [\n    1\n  ],\n  \"settings\": {\n    \"weight_kg\": 71,\n    \"height_sm\": 170,\n    \"age\": 29,\n    \"experience_months\": 8\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{userId}}"
+              ]
+            },
+            "description": "**Admin only.** Partial update.\n\n**Body fields** (subset allowed)\n- `first_name`, `last_name`, `email`, `username`, `gender`, `password`\n- `teacher_ids` — when target is **STUDENT**, must be non-empty valid teacher ids (replaces links)\n- `settings` — object with optional `weight_kg`, `height_sm`, `age`, `experience_months`\n\nAt least one field required."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    ""
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"user\": {\n    \"id\": 2,\n    \"first_name\": \"Anna\",\n    \"last_name\": \"Smith\",\n    \"email\": \"student@example.com\",\n    \"username\": \"student01\",\n    \"gender\": \"FEMALE\",\n    \"role\": \"STUDENT\",\n    \"login_streak_count\": 1,\n    \"last_login_date\": \"2026-05-08T14:30:00.000Z\",\n    \"created_at\": \"2026-05-08T12:00:00.000Z\",\n    \"updated_at\": \"2026-05-08T18:00:00.000Z\",\n    \"settings\": {\n      \"weight_kg\": \"71.00\",\n      \"height_sm\": 170,\n      \"age\": 29,\n      \"experience_months\": 8\n    },\n    \"teachers\": [\n      {\n        \"id\": 1,\n        \"first_name\": \"Coach\",\n        \"last_name\": \"Taylor\",\n        \"username\": \"coach1\",\n        \"gender\": \"MALE\"\n      }\n    ],\n    \"students\": [],\n    \"teacher_ids\": [\n      1\n    ]\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Chat",
+      "description": "OpenAI-backed fitness assistant. Requires valid OpenAI config on server.",
+      "item": [
+        {
+          "name": "Create conversation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Meal prep help\",\n  \"first_message\": \"Give me a simple high-protein breakfast idea.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/chat/conversations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "chat",
+                "conversations"
+              ]
+            },
+            "description": "Starts a conversation. If **`first_message`** is omitted, returns empty `messages` and no AI call. If provided, server calls OpenAI, persists user+assistant messages, may auto-set `title` from message prefix.\n\n**Body fields**\n- `title` — optional string up to 120 chars (blank ok).\n- `first_message` — optional first user turn (1–4000 chars)."
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    ""
+                  ]
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"conversation\": {\n    \"id\": 5,\n    \"title\": \"Meal prep help\",\n    \"user_id\": 2,\n    \"created_at\": \"2026-05-08T19:00:00.000Z\",\n    \"updated_at\": \"2026-05-08T19:00:05.000Z\"\n  },\n  \"messages\": [\n    {\n      \"id\": 10,\n      \"conversation_id\": 5,\n      \"role\": \"user\",\n      \"content\": \"Give me a simple high-protein breakfast idea.\",\n      \"tokens\": null,\n      \"created_at\": \"2026-05-08T19:00:05.000Z\",\n      \"updated_at\": \"2026-05-08T19:00:05.000Z\"\n    },\n    {\n      \"id\": 11,\n      \"conversation_id\": 5,\n      \"role\": \"assistant\",\n      \"content\": \"Try Greek yogurt with berries and chia seeds ...\",\n      \"tokens\": 128,\n      \"created_at\": \"2026-05-08T19:00:05.000Z\",\n      \"updated_at\": \"2026-05-08T19:00:05.000Z\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "List conversations",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/chat/conversations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "chat",
+                "conversations"
+              ]
+            },
+            "description": "Returns conversation summaries with `last_message_preview` (up to 120 chars of latest message)."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    ""
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"conversations\": [\n    {\n      \"id\": 5,\n      \"title\": \"Meal prep help\",\n      \"updated_at\": \"2026-05-08T19:00:05.000Z\",\n      \"last_message_preview\": \"Try Greek yogurt with berries and chia seeds ...\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get conversation with messages",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/chat/conversations/{{conversationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "chat",
+                "conversations",
+                "{{conversationId}}"
+              ]
+            },
+            "description": "Full transcript for the authenticated owner."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    ""
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"conversation\": {\n    \"id\": 5,\n    \"title\": \"Meal prep help\",\n    \"created_at\": \"2026-05-08T19:00:00.000Z\",\n    \"updated_at\": \"2026-05-08T19:00:05.000Z\"\n  },\n  \"messages\": [\n    {\n      \"id\": 10,\n      \"role\": \"user\",\n      \"content\": \"Give me a simple high-protein breakfast idea.\",\n      \"tokens\": null,\n      \"created_at\": \"2026-05-08T19:00:05.000Z\"\n    },\n    {\n      \"id\": 11,\n      \"role\": \"assistant\",\n      \"content\": \"Try Greek yogurt with berries and chia seeds ...\",\n      \"tokens\": 128,\n      \"created_at\": \"2026-05-08T19:00:05.000Z\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Send message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Any vegan swap for yogurt?\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/chat/conversations/{{conversationId}}/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "chat",
+                "conversations",
+                "{{conversationId}}",
+                "messages"
+              ]
+            },
+            "description": "Appends user message, calls OpenAI with recent history + system prompt, saves assistant reply.\n\n**Body fields**\n- `content` — user message, 1–4000 characters."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    ""
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"user_message\": {\n    \"id\": 12,\n    \"conversation_id\": 5,\n    \"role\": \"user\",\n    \"content\": \"Any vegan swap for yogurt?\",\n    \"tokens\": null,\n    \"created_at\": \"2026-05-08T19:10:00.000Z\",\n    \"updated_at\": \"2026-05-08T19:10:00.000Z\"\n  },\n  \"assistant_message\": {\n    \"id\": 13,\n    \"conversation_id\": 5,\n    \"role\": \"assistant\",\n    \"content\": \"You could try unsweetened soy skyr-style yogurt ...\",\n    \"tokens\": 90,\n    \"created_at\": \"2026-05-08T19:10:02.000Z\",\n    \"updated_at\": \"2026-05-08T19:10:02.000Z\"\n  },\n  \"conversation\": {\n    \"id\": 5,\n    \"updated_at\": \"2026-05-08T19:10:02.000Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Send message (stream SSE)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Short tip for hydration during workouts.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/chat/conversations/{{conversationId}}/messages/stream",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "chat",
+                "conversations",
+                "{{conversationId}}",
+                "messages",
+                "stream"
+              ]
+            },
+            "description": "Same as Send message but streams assistant tokens via **Server-Sent Events** (`text/event-stream`). Events: `chunk` with `{ content }`, final `done` with same envelope as non-stream JSON, or `error`.\nPostman often buffers SSE; curl or browser EventSource matches production behavior."
+          },
+          "response": [
+            {
+              "name": "200 OK (SSE example)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    ""
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "text",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "text/event-stream"
+                }
+              ],
+              "cookie": [],
+              "body": "event: chunk\ndata: {\"content\":\"Stay\"}\n\nevent: chunk\ndata: {\"content\":\" hydrated.\"}\n\nevent: done\ndata: {\"user_message\":{\"id\":14,\"conversation_id\":5,\"role\":\"user\"},\"assistant_message\":{\"id\":15,\"role\":\"assistant\"},\"conversation\":{\"id\":5,\"updated_at\":\"2026-05-08T19:15:02.000Z\"}}\n"
+            }
+          ]
+        },
+        {
+          "name": "Delete conversation",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/chat/conversations/{{conversationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "chat",
+                "conversations",
+                "{{conversationId}}"
+              ]
+            },
+            "description": "Cascades messages. Returns `{ ok: true }` when successful."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    ""
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"ok\": true\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Diet",
+      "description": "Ranked diet recommendations from static dataset using BMI/age/gender.",
+      "item": [
+        {
+          "name": "Random / top diet recommendations",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/diet/random",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "diet",
+                "random"
+              ]
+            },
+            "description": "Computes BMI from `UserSettings.weight_kg` and `height_sm` (both must be positive) and scores catalog entries.\nReturns top matches with **`closeness_percentage`** plus `success`, `bmi`, and normalized `age` from profile.\nIf weight/height missing, API responds with validation error (HTTP 422 from error handler)."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    ""
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"bmi\": 21.8,\n  \"age\": 28,\n  \"data\": [\n    {\n      \"id\": 1,\n      \"gender\": \"male\",\n      \"min_age\": 18,\n      \"max_age\": 30,\n      \"min_bmi\": 0,\n      \"max_bmi\": 18.4,\n      \"recommendations\": {\n        \"breakfast\": \"Oatmeal sample\",\n        \"lunch\": \"Chicken sample\",\n        \"dinner\": \"Fish sample\"\n      },\n      \"key_nutrients\": [\n        \"Protein\",\n        \"Complex carbs\"\n      ],\n      \"closeness_percentage\": 87\n    }\n  ]\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
