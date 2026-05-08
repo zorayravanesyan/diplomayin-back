@@ -20,6 +20,7 @@ function mapOpenAIError(err) {
   if (err instanceof AppError) {
     return err;
   }
+  
 
   if (err instanceof OpenAI.APIError) {
     if (err.status === 401) {
